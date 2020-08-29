@@ -1,0 +1,81 @@
+#everything following the pound sign is considered a comment and therefore ignored
+#
+#Mail Connection info. Only needed if there is need to send email
+#if username is equal to empty string, then it is assumed that no login is required
+#if password is not present (but username is) then you will be prompted for one
+#if password is present (and username) then it is used (even if its equal to empty string)
+#to successfully send mail must include the following into master (first) query:
+#   'to_name': 'display name'
+#   'to_addr': 'address@mail.com'
+Mailer:
+    username: ""
+    password: ""
+    host: "localhost"                #I used FakeSMTP for all my tests. http://nilhcem.com/FakeSMTP/
+#    host: "smtp-mail.outlook.com'   #host for Outlook.com
+#    host: "smtp.gmail.com'          #host for gmail.com
+    port: 2525
+#    port: 587                       #for both Outlook and gmail
+    from_name: "Accounting Division"
+    from_addr: "accounts@BigCompany.com"
+    subject: "Balance over due"
+#Queries info. A list of queries is expected. Top query is considered Master Query. All other details to master
+#for more info see other yml files.
+Queries:
+    -   - cust_code: "1"
+          cust_name: "N.Customer"
+          curr_date: "26/8/2020"
+          curr_balance: "23"
+          my_signature: "examples\\Signature.jpg"
+          pres_sign: "examples\\Signature_Elvis.jpg"
+          to_name: "Mr Customer New"
+          to_addr: "p.p@mail.com"
+    -   - trans_date: "25/4/2020"
+          trans_debit: "10,00"
+          trans_credit: ""
+          trans_balance: "10.00"
+        - trans_date: "28/4/2020"
+          trans_debit: "20,00"
+          trans_credit: "5,00"
+          trans_balance: "25,00"
+        - trans_date: "30/4/2020"
+          trans_debit: ""
+          trans_credit: "2,00"
+          trans_balance: "23,00"
+    -   - toy_code: "1"
+          toy_descr: "Buzz light year"
+          toy_image: "examples\\Buzz.png"
+          toy_cust_code: "1"
+        - toy_code: "2"
+          toy_descr: "Rex"
+          toy_image: "examples\\Rex.png"
+          toy_cust_code: "1"
+        - toy_code: "3"
+          toy_descr: "Transformer"
+          toy_image: "examples\\Transformer.png"
+          toy_cust_code: "1"
+#For a column in a list of dictionaries or in a file to be treated as image must be contained in the Images section that follows
+#you can also specify width and height of image. If only one is specified (either width or height) the other will be proportionally changed
+Images:
+    my_signature:
+        width: "30"
+        height: ""
+    pres_sign:
+        width: "30"
+        height: ""
+    toy_image:
+        width: ""
+        height: "20"
+#you can specify in the Params section, command line parameters to be passed
+#the order is:
+#   if command line arguments are present they will always be used
+#   if parameters are present (and no command line arguments) in Params section then they will be used
+#   if none of the above then default values will be used
+#      to see default values just enter "MyMailMergeV5.py -h" in the command prompt
+Params:
+    input: "examples\\MyMailMergeV5.docx"
+    output: "examples\\MyMailMergeV5_Mail_Out.docx"
+    log: "MyMailMergeV5_Mail.log"
+    mailTemplate_html: "examples\\MyMailMergeV5.html" #the html format of the email to be send. Must contain {} where the text part will be placed
+    mailTemplate_text: "examples\\MyMailMergeV5.txt"  #the text format of the email to be send.
+    attachments: ["output"] #if equal to "output" then the output of the document merge will be used
+    images_attached: ["examples\\Signature_Elvis.jpg"] #if images are needed in the html template part (company logo, signatures, etc.)

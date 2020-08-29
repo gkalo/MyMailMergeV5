@@ -1,0 +1,45 @@
+#everything following the pound sign is considered a comment and therefore ignored
+#
+#Connection info. Only needed if use of a database is required
+#to connect a username attribute must be present
+#if password is not present then you will be prompted for one
+#if password is present then it is used (even if its equal to empty string)
+Connection:
+    db: "MySQL" #must be equal to "MySQL" or "Oracle". If not present Oracle is assumed.
+    username: "root"
+    password: "root"
+    host: "localhost"
+    port: 3306
+    database: "sakila"
+#Queries info. A list of queries is expected. Top query is considered Master Query. All other details to master
+#You can NOT have detail of detail
+#make sure that column names are unique within ALL queries
+#all blob type db columns are treated as images
+#for MySQL (notice the Where clause: "trans_cust_code = %(cust_code)s". cust_code is the parameter that will be bound to a value at run time. Different syntax for Oracle and MySQL
+#   if cust_code is a column of first query then the value of that column will be used. If not then you will be prompted for a value
+Queries:
+    - "Select my_code cust_code, my_name cust_name, my_signature, convert(COALESCE(my_balance,0), char) curr_balance, DATE_FORMAT(curdate(), '%d/%m/%Y') curr_date, (Select my_signature From SIGNATURES Where MY_CODE = 2) pres_sign From SIGNATURES Order By my_code"
+    - "Select DATE_FORMAT(trans_date, '%d/%m/%Y') trans_date, convert(trans_debit, char) trans_debit, convert(trans_credit, char) trans_credit, convert(trans_balance, char) trans_balance from transactions where trans_cust_code = %(cust_code)s"
+    - "Select * From TOYS Where toy_cust_code = %(cust_code)s"
+#all blob type db columns are treated as images
+#you can also specify width and height of image. If only one is specified (either width or height) the other will be proportionally changed
+Images:
+    my_signature:
+        width: "30"
+        height: ""
+    pres_sign:
+        width: "30"
+        height: ""
+    toy_image:
+        width: ""
+        height: "20"
+#you can specify in the Params section, command line parameters to be passed
+#the order is:
+#   if command line arguments are present they will always be used
+#   if parameters are present (and no command line arguments) in Params section then they will be used
+#   if none of the above then default values will be used
+#      to see default values just enter "MyMailMergeV5.py -h" in the command prompt
+Params:
+    input: "examples\\MyMailMergeV5.docx"
+    output: "examples\\MyMailMergeV5_mySQL_Out.docx"
+    log: "MyMailMergeV5_mySQL.log"

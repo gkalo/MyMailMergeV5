@@ -1,0 +1,60 @@
+#everything following the pound sign is considered a comment and therefore ignored
+#
+#instead of queries you can use lists of dictionaries with key:value pairs as columns of records
+#lists make experimenting very easy. No need for databases or excel files
+#make sure that column names are unique within ALL queries
+Queries:
+    -   - cust_code: "1"
+          cust_name: "N.Customer"
+          curr_date: "26/8/2020"
+          curr_balance: "23"
+          my_signature: "examples\\Signature.jpg"
+          pres_sign: "examples\\Signature_Elvis.jpg"
+          to_name: "Mr Customer New"
+          to_addr: "p.p@mail.com"
+    -   - trans_date: "25/4/2020"
+          trans_debit: "10,00"
+          trans_credit: ""
+          trans_balance: "10.00"
+        - trans_date: "28/4/2020"
+          trans_debit: "20,00"
+          trans_credit: "5,00"
+          trans_balance: "25,00"
+        - trans_date: "30/4/2020"
+          trans_debit: ""
+          trans_credit: "2,00"
+          trans_balance: "23,00"
+    -   - toy_code: "1"
+          toy_descr: "Buzz light year"
+          toy_image: "examples\\Buzz.png"
+          toy_cust_code: "1"
+        - toy_code: "2"
+          toy_descr: "Rex"
+          toy_image: "examples\\Rex.png"
+          toy_cust_code: "1"
+        - toy_code: "3"
+          toy_descr: "Transformer"
+          toy_image: "examples\\Transformer.png"
+          toy_cust_code: "1"
+#For a column in a list of dictionaries or in a file to be treated as image must be contained in the Images section that follows
+#you can also specify width and height of image. If only one is specified (either width or height) the other will be proportionally changed
+Images:
+    my_signature:
+        width: "30"
+        height: ""
+    pres_sign:
+        width: "30"
+        height: ""
+    toy_image:
+        width: ""
+        height: "20"
+#you can specify in the Params section, command line parameters to be passed
+#the order is:
+#   if command line arguments are present they will always be used
+#   if parameters are present (and no command line arguments) in Params section then they will be used
+#   if none of the above then default values will be used
+#      to see default values just enter "MyMailMergeV5.py -h" in the command prompt
+Params:
+    input: "examples\\MyMailMergeV5.docx"
+    output: "examples\\MyMailMergeV5_List_Out.docx"
+    log: "MyMailMergeV5_List.log"

@@ -1,0 +1,6 @@
+trans_cust_code	trans_date	trans_debit	trans_credit	trans_balance
+1	25/4/2020	10		10
+1	28/4/2020	20	5	25
+1	30/4/2020		2	23
+2	1/5/2020	80		80
+2	19/6/2020	40		120

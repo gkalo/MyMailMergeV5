@@ -1,0 +1,39 @@
+#everything following the pound sign is considered a comment and therefore ignored
+#
+#for Excel or CSV files. If the file is to be used in a table make sure that the first column in the file is used. The first column is always used to initiate the mailmerge
+#if you define an Excel file, use file_name for the actual file and the sheet parameter for the sheet inside the file (even if there is only one sheet)
+#if you define a delimited file, use only file_name for the actual file. Do NOT use sheet, remove it or leave it blank.
+#   You must also provide the delimiter used. if no delimiter is present tab ('\t') is assumed
+#make sure that column names are unique within ALL queries
+Queries:
+    - file_name: "examples\\testdata.xlsx"
+      sheet: "Customers"
+    - file_name: "examples\\testdata.xlsx"
+      sheet: "Transactions"
+      #always use double quotes around filter condition. Keep in mind that all values are strings so act accordingly when filtering
+      filter_condition: "sheet[row,4] == '%(cust_code)s'"  #Condition will be evaluated for every row. Those that are true will be kept, all others removed
+    - file_name: "examples\\testdata_toys.csv"
+      filter_condition: "sheet[row,3] == '%(cust_code)s'"  #Condition will be evaluated for every row. Those that are true will be kept, all others removed
+      delimiter: ","
+#For a column in a list of dictionaries or in a file to be treated as image must be contained in the Images section that follows
+#you can also specify width and height of image. If only one is specified (either width or height) the other will be proportionally changed
+Images:
+    my_signature:
+        width: "30"
+        height: ""
+    pres_sign:
+        width: "30"
+        height: ""
+    toy_image:
+        width: ""
+        height: "20"
+#you can specify in the Params section, command line parameters to be passed
+#the order is:
+#   if command line arguments are present they will always be used
+#   if parameters are present (and no command line arguments) in Params section then they will be used
+#   if none of the above then default values will be used
+#      to see default values just enter "MyMailMergeV5.py -h" in the command prompt
+Params:
+    input: "examples\\MyMailMergeV5.docx"
+    output: "examples\\MyMailMergeV5_File_Out.docx"
+    log: "MyMailMergeV5_File.log"

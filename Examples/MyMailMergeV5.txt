@@ -1,0 +1,5 @@
+Dear {cust_name},
+
+Please find attached details about your current balance.
+
+Thank you for your business.

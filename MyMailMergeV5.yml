@@ -1,0 +1,88 @@
+#everything following the pound sign is considered a comment and therefore ignored
+#
+#Connection info.
+#If there is no use of a database do not include connection section
+#there must be a connection section and a username attribute present to open a db connection
+#if password is not present then you will be prompted for one
+#if password is present then it is used (even if its equal to empty string)
+Connection:
+    db: "Oracle" #must be equal to "MySQL" or "Oracle". If not present Oracle is assumed.
+    username: "hr"
+    password: "hr"
+    dsn: "localhost:1521/XEPDB1" #host:port/serviceName
+    port: "1521" #as string, always
+    encoding: "UTF-8"
+    # port: 3306 #needed for MySQL
+    # database: "sakila" #needed for MySQL
+#Mail Connection info. If there is no need to send email do not include this section
+#if username is equal to empty string, then it is assumed that no login is required
+#if password is not present (but username is) then you will be prompted for one
+#if password is present (and username) then it is used (even if its equal to empty string)
+#to successfully send mail must include the following into master (first) query:
+#   'to_name': 'display name'
+#   'to_addr': 'address@mail.com'
+#you can also include anything else needed to be present in mail body
+Mailer:
+    username: ""
+    password: ""
+    host: "localhost"
+    port: 2525
+    from_name: "display name"
+    from_addr: "address@mail.com"
+    subject: "text as subject"
+#Queries info. A list of queries is expected. Top query is considered Master Query. All other details to master
+#You can NOT have detail of detail
+#every record for first query is stored in rec_mas dictionary. Every record for all other queries are stored in rec_det[n] list of dictionaries. n is from 0 to detail query number
+#every query list item can be a string (Query string) or a list of dictionaries with key:value pairs as columns of records or a dictionary defining an Excel or delimited file
+#make sure that column names are unique within ALL queries
+#all blob type db columns are treated as images
+#For a column in a list of dictionaries to be treated as image must also be present in the Images section that follows
+Queries:
+#If the query is to be used in a table make sure that the first column is used in that table. The first column is always used to initiate the mailmerge
+#for Oracle (notice the Where clause: "MY_CODE = :pCode". pCode is the parameter that will be bound to a value at run time 
+    - "Select to_char(my_code) cust_code, my_name cust_name, to_char(sysdate,'dd/mm/yyyy') curr_date, to_char(nvl(my_balance,0)) curr_balance, my_signature, 'κύριον Πελατόπουλο' to_name, 'p.p@mail.com' to_addr, (Select my_signature From SIGNATURES Where MY_CODE = 2) pres_sign From SIGNATURES Where my_code = :Customer_Code Order By MY_CODE"
+#for Excel or CSV files. If the file is to be used in a table make sure that the first column in the file is used. The first column is always used to initiate the mailmerge
+#if you define an Excel file, use file_name for the actual file and the sheet parameter for the sheet inside the file (even if there is only one sheet)
+#if you define a delimited file, use only file_name for the actual file. Do NOT use sheet, remove it or leave it blank.
+#   You must also provide the delimiter used. if no delimiter is present tab ('\t') is assumed
+    -   - trans_date: "25/4/2020"
+          trans_debit: "10,00"
+          trans_credit: ""
+          trans_balance: "10.00"
+        - trans_date: "28/4/2020"
+          trans_debit: "20,00"
+          trans_credit: "5,00"
+          trans_balance: "25,00"
+        - trans_date: "30/4/2020"
+          trans_debit: ""
+          trans_credit: "2,00"
+          trans_balance: "23,00"
+    - file_name: "examples\\testdata_toys.csv"
+      #always use double quotes around filter condition. Keep in mind that all values are strings so act accordingly when filtering
+      filter_condition: "sheet[row,3] == '%(cust_code)s'"  #Condition will be evaluated for every row. Those that are true will be kept, all others removed
+      delimiter: ","
+#For a column in a list of dictionaries to be treated as image must be contained in the Images section that follows
+#you can also specify width and height of image. If only one is specified (either width or height) the other will be proportionally changed
+Images:
+    my_signature:
+        width: "30"
+        height: ""
+    pres_sign:
+        width: "30"
+        height: ""
+    toy_image:
+        width: ""
+        height: "20"
+#you can specify in the Params section, command line parameters to be passed
+#the order is:
+#   if command line arguments are present they will always be used
+#   if parameters are present (and no command line arguments) in Params section then they will be used
+#   if none of the above then default values will be used
+Params:
+    input: "examples\\MyMailMergeV5.docx"
+    output: "examples\\MyMailMergeV5_Out.docx"
+    log: "MyMailMergeV5.log"
+    mailTemplate_html: "examples\\MyMailMergeV5.html"
+    mailTemplate_text: "examples\\MyMailMergeV5.txt"
+    attachments: ["output"] #if equal to "output" then the output of the document merge will be used
+    images_attached: ["examples\\Signature_Elvis.jpg"] #if images are needed in the html template part (company logo, signatures, etc.)
