@@ -10,7 +10,6 @@ Connection:
     username: "hr"
     password: "hr"
     dsn: "localhost:1521/XEPDB1" #host:port/serviceName
-    port: "1521" #as string, always
     encoding: "UTF-8"
     # port: 3306 #needed for MySQL
     # database: "sakila" #needed for MySQL
