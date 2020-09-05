@@ -239,6 +239,18 @@ def QueryPrepAndBind(q_no, q_cur, q_sql):
     myLogging("Debug", "bindVars=" + str(bindVars))
     return bindVars
 #----------------------------------------------------------------------------------------------------------------------
+def ReplaceBindVars(wCondition):
+    #check for bind variables
+    for bindVar in re.findall(r"\%\((.*?)\)s", wCondition):
+        if bindVar.lower() in rec_mas:
+            bindVarVal = rec_mas[bindVar.lower()]
+        else:
+            bindVarVal = input("Please enter value for " + bindVar + ": ")
+            
+        wCondition = re.sub(r"\%\((.*?)\)s", bindVarVal, wCondition)
+    
+    return wCondition
+#----------------------------------------------------------------------------------------------------------------------
 def GetSheetFromSpreadSheet(q_no):
     wFile_name = mmm3_query[q_no-1]['file_name']
     if 'sheet' in mmm3_query[q_no-1] and mmm3_query[q_no-1]['sheet']:
@@ -263,13 +275,8 @@ def GetSheetFromSpreadSheet(q_no):
         cond = mmm3_query[q_no-1]['filter_condition']
         myLogging("Debug", "         " + " has also a filter condition [" + cond + "]")
         
-        #first check for bind variables
-        for bindVar in re.findall(r"\%\((.*?)\)s", cond):
-            if bindVar.lower() in rec_mas:
-                cond = re.sub(r"\%\((.*?)\)s", rec_mas[bindVar.lower()], cond)
-            else:
-                bindVarVal = input("Please enter value for " + bindVar + ": ")
-                cond = re.sub(r"\%\((.*?)\)s", bindVarVal, cond)
+        #replace all bind variables, if any
+        cond = ReplaceBindVars(cond)
         
         myLogging("Debug", "         " + " has also a filter condition [" + cond + "]")
         
@@ -436,8 +443,13 @@ def findIfCondition(doc_obj, regex):
                     try:
                         wIfName = regex.search(doc_part.text).group(1)
                         wIfCond = regex.search(doc_part.text).group(2)
+                        myLogging("Debug", "If condition found: name=[" + wIfName + "], condition=[" + wIfCond + "]")
+                        
+                        #replace all bind variables, if any
+                        wIfCond = ReplaceBindVars(wIfCond)
+                        
                         wEval = eval(wIfCond)
-                        myLogging("Debug", "If condition found: name=[" + wIfName + "], condition=[" + wIfCond + "] = " + str(wEval))
+                        myLogging("Debug", "                    name=[" + wIfName + "], condition=[" + wIfCond + "] = " + str(wEval))
                         
                         text = doc_part.text
                         
