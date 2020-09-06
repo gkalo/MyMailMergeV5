@@ -22,4 +22,4 @@ Special credits to Krystian Rosiński. For some reason I could not send email wi
 http://code.activestate.com/recipes/578150-sending-non-ascii-emails-from-python-3/
 
 License:
-MIT License, as described in "LICENSE.txt". You can do just about anything with the sources, just drop me an email if you fill like it.
+MIT License, as described in "LICENSE.txt". You can do just about anything with the sources, just drop me an email if you feel like it.
