@@ -247,7 +247,7 @@ def ReplaceBindVars(wCondition):
         else:
             bindVarVal = input("Please enter value for " + bindVar + ": ")
             
-        wCondition = re.sub(r"\%\((.*?)\)s", bindVarVal, wCondition)
+        wCondition = re.sub(r"\%\((.*?)\)s", bindVarVal, wCondition, flags=re.IGNORECASE)
     
     return wCondition
 #----------------------------------------------------------------------------------------------------------------------
@@ -393,7 +393,6 @@ def OutputTypeHandler(cursor, name, defaultType, size, precision, scale):
     if defaultType == cx_Oracle.BLOB:
         return cursor.var(cx_Oracle.LONG_BINARY, arraysize=cursor.arraysize)
 #----------------------------------------------------------------------------------------------------------------------
-#to evaluate and keep or remove if - fi blocks with conditional statements
 def docx_delete_paragraph(paragraph):
     #remove paragraph (with the following workaround, since .delete method does not exist)
     #https://github.com/python-openxml/python-docx/issues/33#issuecomment-77661907
@@ -401,9 +400,29 @@ def docx_delete_paragraph(paragraph):
     p.getparent().remove(p)
     p._p = p._element = None
 
-def findIfCondition(doc_obj, regex):
+#----------------------------------------------------------------------------------------------------------------------
+def checkToDeleteLine(parentIsCell, doc_part):
+    if not parentIsCell:
+        if len(doc_part.text) == 0:
+            docx_delete_paragraph(doc_part)
+        elif len(doc_part.text) == 1 and doc_part.text == " ":
+            doc_part.text = ""
+
+def deleteLastItemInIfCond(ifConditions):
+    myLogging("Debug", "              : delete last item in ifConditions list with name=[" + ifConditions[len(ifConditions)-1]["name"] + "]")
+    del ifConditions[len(ifConditions)-1]
     
-    inIf = False
+    wIfName = ""
+    if ifConditions:
+        wIfName = ifConditions[len(ifConditions)-1]["name"]
+    return wIfName
+
+#----------------------------------------------------------------------------------------------------------------------
+#to evaluate and keep or remove if - fi blocks with conditional statements
+def findIfCondition(doc_obj):
+    global ifConditions
+    wMode = "Continue"
+    wIfElseFiText = r"\{\{((if)_(.*?) (.*?)|(else)_(.*?)|(fi)_(.*?))\}\}"
     
     if isinstance(doc_obj, _Document):
         parent_elm = doc_obj.element.body
@@ -416,97 +435,132 @@ def findIfCondition(doc_obj, regex):
     else:
         raise ValueError("something's not right")
 
+    wIfName = ""
+    if ifConditions:
+        wIfName = ifConditions[len(ifConditions)-1]["name"]
+            
     for child in parent_elm.iterchildren():
         if isinstance(child, CT_P):
             doc_part = Paragraph(child, doc_obj)
+            text = doc_part.text
+            startDeleteAt = 0
             
-            #if we are in an active if (multy line) then delete everything until fi block is found
-            if inIf:
-                #look for fi block
-                if re.search(r"\{\{fi_" + wIfName + "\}\}", doc_part.text, re.IGNORECASE):
-                    #if yes then delete everything until after fi block
-                    text = re.sub(r"(.*)\{\{fi_" + wIfName + "\}\}", r"", doc_part.text)
-                    doc_part.text = text
-                    if not parentIsCell and len(doc_part.text) == 0:
-                        docx_delete_paragraph(doc_part)
-                    
-                    inIf = False
+            wMatch = re.search(wIfElseFiText, text, re.IGNORECASE)
+            wIfElseFiTextFound = False
+            while wMatch:
+                wIfElseFiTextFound = True
+                wGroups = wMatch.groups()
+                wName = ""
+                
+                if str(wGroups[0]).lower().startswith("if"):
+                    wGrp = wGroups[1]
+                    wName = wGroups[2]
+                    wCond = wGroups[3]
+                    myLogging("Debug", "If condition found: name=[" + wName + "], condition=[" + wCond + "]")
+                elif str(wGroups[0]).lower().startswith("else"):
+                    wGrp = wGroups[4]
+                    wName = wGroups[5]
+                    myLogging("Debug", "Else found: name=[" + wName + "]")
+                elif str(wGroups[0]).lower().startswith("fi"):
+                    wGrp = wGroups[6]
+                    wName = wGroups[7]
+                    myLogging("Debug", "Fi found: name=[" + wName + "]")
                 else:
-                    docx_delete_paragraph(doc_part)
-
-            if not inIf and regex.search(doc_part.text):
-                if len(regex.search(doc_part.text).groups()) == 2:
-                    
-                    wIfName = ""
-                    wIfCond = ""
-                    wEval = False
-                    try:
-                        wIfName = regex.search(doc_part.text).group(1)
-                        wIfCond = regex.search(doc_part.text).group(2)
-                        myLogging("Debug", "If condition found: name=[" + wIfName + "], condition=[" + wIfCond + "]")
+                    myLogging("Error", "Problem found: [" + wGroups[0].lower() + "]")
+                
+                #remove what we found so not to find again
+                text = text[0: wMatch.start():] + text[wMatch.end()::]
+                
+                if wGrp.lower() == "if":
+                    if wMode == "Continue":
+                        wIfName = wName
+                        wIfCond = wCond
                         
                         #replace all bind variables, if any
                         wIfCond = ReplaceBindVars(wIfCond)
                         
-                        wEval = eval(wIfCond)
-                        myLogging("Debug", "                    name=[" + wIfName + "], condition=[" + wIfCond + "] = " + str(wEval))
-                        
-                        text = doc_part.text
-                        
-                        #if condition is true then just delete the if block
-                        if wEval:
-                            text = regex.sub(r"", text)
-                        #if condition is false then delete everything between if and fi block
-                        else:
-                            #look if the fi block is in same line
-                            if re.search(r"\{\{fi_" + wIfName + "\}\}", text, re.IGNORECASE):
-                                #if yes then delete everything between if and fi blocks
-                                text = re.sub(r"\{\{if_" + wIfName + "(.*?)\{\{fi_" + wIfName + "\}\}", r"", text)
-                            else:
-                                #delete everything to the end of line and everything else until fi is found
-                                text = re.sub(r"\{\{if_" + wIfName + "(.*)", r"", text)
-                                inIf = True
+                        wEval = False
+                        try:
+                            wEval = eval(wIfCond)
+                            ifConditions.append({"name": wIfName, "condition": wIfCond, "eval": wEval})
+                            myLogging("Debug", "             L:" +str(len(ifConditions)) + "    name=[" + wIfName + "], condition=[" + wIfCond + "] = " + str(wEval))
+                        except Exception:
+                            myLogging("Error", "Invalid if condition: name=[" + wIfName + "], condition=[" + wIfCond + "]")
                             
-                        doc_part.text = text
-                        if not parentIsCell and len(doc_part.text) == 0:
-                            docx_delete_paragraph(doc_part)
-                    except Exception:
-                        myLogging("Error", "Invalid if condition: name=[" + wIfName + "], condition=[" + wIfCond + "]")
-
+                        #if condition is true, continue
+                        if wEval:
+                            myLogging("Debug", "              : Just remove If block - ifName=[" + wIfName + "]")
+                        else:
+                            wMode = "Delete"
+                            startDeleteAt = wMatch.start()
+                            myLogging("Debug", "              : start deleting - ifName=[" + wIfName + "]")
+                    else:
+                        myLogging("Debug", "              : ignore it, keep deleting")
+                            
+                elif wGrp.lower() == "else":
+                    #if is Continue we were in an If that was true, so from else until fi delete everything
+                    if wMode == "Continue":
+                        if wName == wIfName:
+                            wMode = "Delete"
+                            startDeleteAt = wMatch.start()
+                            myLogging("Debug", "              : start deleting - ifName=[" + wIfName + "]")
+                        else:
+                            myLogging("Error", "Invalid nested if condition: it is=[" + wName + "], should be=[" + wIfName + "]")
+                    
+                    #else is Delete, so we stop deleting
+                    else:
+                        if wName == wIfName:
+                            #this is the block we are looking for, delete everything from last start till end of else block and continue
+                            myLogging("Debug", "              : stop deleting - ifName=[" + wIfName + "]")
+                            text = text[0: startDeleteAt:] + text[(wMatch.end() - (wMatch.end() - wMatch.start()))::]
+                            wMode = "Continue"
+                        else:
+                            myLogging("Debug", "              : ignore it, keep deleting, it is=[" + wName + "], should be=[" + wIfName + "]")
+                elif wGrp.lower() == "fi":
+                    #if is Continue we were in a true condition (if or else), just delete the fi block
+                    if wMode == "Continue":
+                        if wName == wIfName:
+                            wIfName = deleteLastItemInIfCond(ifConditions)
+                        else:
+                            myLogging("Error", "Invalid nested if condition: it is=[" + wName + "], should be=[" + wIfName + "]")
+                    
+                    #else is Delete, so we stop deleting
+                    else:
+                        if wName == wIfName:
+                            #delete everything from last start till end of fi block and continue
+                            myLogging("Debug", "              : stop deleting - ifName=[" + wIfName + "]")
+                            text = text[0: startDeleteAt:] + text[(wMatch.end() - (wMatch.end() - wMatch.start()))::]
+                            wMode = "Continue"
+                            wIfName = deleteLastItemInIfCond(ifConditions)
+                        else:
+                            myLogging("Debug", "              : ignore it, keep deleting, it is=[" + wName + "], should be=[" + wIfName + "]")
+                
+                wMatch = re.search(wIfElseFiText, text, re.IGNORECASE)
+            #end of while wMatch:
+            
+            if wIfElseFiTextFound:
+                if wMode == "Delete":
+                    myLogging("Debug", "              : delete rest of line - ifName=[" + wIfName + "]")
+                    text = text[0: startDeleteAt:] + text[len(text)::]
+                
+                doc_part.text = text
+                checkToDeleteLine(parentIsCell, doc_part)
+            else:
+                if wMode == "Delete":
+                    docx_delete_paragraph(doc_part)
+                    myLogging("Debug", "              : delete line - ifName=[" + wIfName + "]")
+            
         elif isinstance(child, CT_Tbl):
             doc_part = Table(child, doc_obj)
             
-            if inIf:
+            if wMode == "Delete":
                 #this is the correct way to remove a table
                 doc_part._element.getparent().remove(doc_part._element)
+                myLogging("Debug", "               : delete table")
             else:
                 for row in doc_part.rows:
                     for cell in row.cells:
-                        findIfCondition(cell, regex)
-#=======================================================
-def removeFiBlocks(doc_obj):
-    if isinstance(doc_obj, _Document):
-        parent_elm = doc_obj.element.body
-        parentIsCell = False
-    elif isinstance(doc_obj, _Cell):
-        parent_elm = doc_obj._tc
-        parentIsCell = True
-    else:
-        raise ValueError("something's not right")
-
-    for child in parent_elm.iterchildren():
-        if isinstance(child, CT_P):
-            doc_part = Paragraph(child, doc_obj)
-
-            if re.search(r"\{\{fi_(.*?)\}\}", doc_part.text, re.IGNORECASE):
-                doc_part.text = re.sub(r"\{\{fi_(.*?)\}\}", r"", doc_part.text)
-                if not parentIsCell and len(doc_part.text) == 0:
-                    docx_delete_paragraph(doc_part)
-        elif isinstance(child, CT_Tbl):
-            doc_part = Table(child, doc_obj)
-            for row in doc_part.rows:
-                for cell in row.cells:
-                    removeFiBlocks(cell)
+                        findIfCondition(cell)
 #----------------------------------------------------------------------------------------------------------------------
 def send_email(mailServer, from_name, from_addr, subject, html, text, mail_data, OutFile, attachments=[], img_list=[]):
     msg_root = MIMEMultipart('mixed')
@@ -526,7 +580,7 @@ def send_email(mailServer, from_name, from_addr, subject, html, text, mail_data,
     msg_alternative.attach(msg_text)
 
     #replace all new lines with <br> for the html alternative
-    text = re.sub(r"\n", r"<br>", text)
+    text = re.sub(r"\n", r"<br>", text, flags=re.IGNORECASE)
     msg_html = MIMEText(html.format(text), 'html')
     msg_alternative.attach(msg_html)
 
@@ -565,7 +619,6 @@ cfg = {}
 recs_cnt=[]
 examineAllArgs()
 rec_mas={}
-
 try:
     if  "Connection" in cfg and 'username' in cfg["Connection"] and cfg["Connection"]['username']:
         if 'password' in cfg["Connection"]:
@@ -659,9 +712,8 @@ try:
                 ##NOTE this conversion plus the OutputTypeHandler in the top, WORKS!!
                 docx_replace_regex(dxDoc, regex1, io.BytesIO(images[r]), r)
         
-        regex1 = re.compile(r"\{\{IF_(.*?) (.*?)\}\}", re.IGNORECASE)
-        findIfCondition(dxDoc, regex1)
-        removeFiBlocks(dxDoc)
+        ifConditions=[]
+        findIfCondition(dxDoc)
         
         wFileName, wFileExt = os.path.splitext(args.output)
         wOutFile = wFileName + str(recs_cnt[0]) + wFileExt
